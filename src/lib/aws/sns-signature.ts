@@ -72,18 +72,32 @@ export function spkiFromCertificate(der: Uint8Array): Uint8Array {
 	return der.subarray(offset, offset + spki.header + spki.length);
 }
 
+
 async function fetchCertificate(url: string): Promise<ArrayBuffer> {
-	const cached = certCache.get(url);
-	if (cached) return cached;
-	const pending = fetch(url, { redirect: "error", signal: AbortSignal.timeout(5000) }).then(async (response) => {
-		if (!response.ok) throw new Error(`Signing certificate fetch failed: ${response.status}`);
-		const der = pemToDer(await response.text());
-		return der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer;
-	});
-	certCache.set(url, pending);
-	pending.catch(() => certCache.delete(url));
-	return pending;
+        const cached = certCache.get(url);
+        if (cached) return cached;
+
+        const pending = fetch(url, {
+                redirect: "manual",
+                signal: AbortSignal.timeout(5000),
+                cache: "no-store",
+        }).then(async (response) => {
+                if (!response.ok) {
+                        throw new Error(`Signing certificate fetch failed: ${response.status}`);
+                }
+
+                const der = pemToDer(await response.text());
+                return der.buffer.slice(
+                        der.byteOffset,
+                        der.byteOffset + der.byteLength
+                ) as ArrayBuffer;
+        });
+
+        certCache.set(url, pending);
+        pending.catch(() => certCache.delete(url));
+        return pending;
 }
+
 
 /** Checks the SNS signature against the certificate Amazon published. Returns false on any problem. */
 export async function verifySnsSignature(
