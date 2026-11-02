@@ -33,7 +33,11 @@ export async function POST(request: Request) {
 		if (!url || url.protocol !== "https:" || !/^sns\.[a-z0-9-]+\.amazonaws\.com$/.test(url.hostname)) {
 			return NextResponse.json({ error: "Invalid subscription URL" }, { status: 400 });
 		}
-		const confirmed = await fetch(url);
+		const confirmed = await fetch(url, {
+    method: "GET",
+    redirect: "manual",
+    cache: "no-store",
+});
 		return NextResponse.json({ confirmed: confirmed.ok }, { status: confirmed.ok ? 200 : 502 });
 	}
 	if (envelope.Type !== "Notification") return NextResponse.json({ ignored: true });
